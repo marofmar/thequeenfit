@@ -20,7 +20,7 @@ export default function RootLayout({
             <Link href="/" className="text-xl font-bold text-green-600">
               👑 CFQ WOD 👑
             </Link>
-            <div className="space-x-16">
+            <div className="space-x-12">
               <Link href="/wods" className="text-gray-700 hover:text-green-600">
                 WOD
               </Link>
