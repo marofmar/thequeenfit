@@ -1,7 +1,7 @@
 type WodProps = {
   date: string;
   title: string;
-  type: "cardio" | "gymnastics" | "strength";
+  type: ("cardio" | "gymnastics" | "strength")[];
   description: string;
   level: string;
 };
@@ -26,23 +26,39 @@ export default function WodCard({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <div className="flex items-center mb-4">
-        <span className="text-gray-500 text-sm mr-2">{typeIconMap[type]}</span>
-        <span className="text-gray-500 text-sm mr-2">{date}</span>
-        <span
-          className={`px-2 py-1 rounded-full text-xs text-white ${typeColorMap[type]}`}
-        >
-          {type}
-        </span>
+    <div className="bg-white shadow-md rounded-lg p-4">
+      <div className="flex items-center mb-2">
+        <div className="flex items-center mr-2">
+          {type.map((t, index) => (
+            <span key={t} className="text-gray-500 text-sm">
+              {typeIconMap[t]}
+              {index < type.length - 1 && <span className="mx-1">+</span>}
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {type.map((t) => (
+            <span
+              key={t}
+              className={`px-2 py-1 rounded-full text-xs text-white ${typeColorMap[t]}`}
+            >
+              {t}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <h2 className="text-xl font-bold mb-2">{title}</h2>
-      <p className="text-gray-600 mb-4 whitespace-pre-line">{description}</p>
+      <div className="pl-4">
+        <span className="text-gray-500 text-sm block mb-1">{date}</span>
+        <h2 className="text-xl font-bold mb-1">{title}</h2>
+        <p className="text-gray-600 mb-2 whitespace-pre-line">{description}</p>
 
-      <div className="flex items-center">
-        <span className="text-sm text-gray-500">난이도:</span>
-        <span className="ml-2 text-sm font-medium">{level}</span>
+        <div className="flex items-start">
+          {/* <span className="text-sm text-gray-500">난이도:</span> */}
+          <span className="text-sm font-medium whitespace-pre-line">
+            {level}
+          </span>
+        </div>
       </div>
     </div>
   );
