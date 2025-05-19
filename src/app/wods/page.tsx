@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 
 type WodData = {
   title: string;
-  type: "cardio" | "gymnastics" | "strength";
+  type: ("cardio" | "gymnastics" | "strength")[];
   description: string;
   level: string;
 };
@@ -64,10 +64,25 @@ export default function WodsPage() {
 
       const wodMap: WodMap = {};
       allData.forEach((wod: any) => {
-        console.log("Processing WOD:", wod);
+        console.log("Raw WOD data:", wod);
+        // type이 문자열인 경우 쉼표로 분리하여 배열로 변환
+        const types =
+          typeof wod.type === "string"
+            ? wod.type
+                .split(",")
+                .map(
+                  (t: string) =>
+                    t.trim() as "cardio" | "gymnastics" | "strength"
+                )
+            : Array.isArray(wod.type)
+            ? wod.type
+            : [wod.type];
+
+        console.log("Processed types:", types);
+
         wodMap[wod.date] = {
           title: wod.title,
-          type: wod.type,
+          type: types,
           description: wod.description,
           level: wod.level,
         };
