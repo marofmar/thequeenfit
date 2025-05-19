@@ -26,10 +26,9 @@ export default function WodCard({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <div className="flex items-center mb-4">
+    <div className="bg-white shadow-md rounded-lg p-4">
+      <div className="flex items-center mb-2">
         <span className="text-gray-500 text-sm mr-2">{typeIconMap[type]}</span>
-        <span className="text-gray-500 text-sm mr-2">{date}</span>
         <span
           className={`px-2 py-1 rounded-full text-xs text-white ${typeColorMap[type]}`}
         >
@@ -37,9 +36,10 @@ export default function WodCard({
         </span>
       </div>
 
-      <h2 className="text-xl font-bold mb-2">{title}</h2>
       <div className="pl-4">
-        <p className="text-gray-600 mb-4 whitespace-pre-line">{description}</p>
+        <span className="text-gray-500 text-sm block mb-1">{date}</span>
+        <h2 className="text-xl font-bold mb-1">{title}</h2>
+        <p className="text-gray-600 mb-2 whitespace-pre-line">{description}</p>
 
         <div className="flex items-start">
           {/* <span className="text-sm text-gray-500">난이도:</span> */}
