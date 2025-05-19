@@ -41,8 +41,10 @@ export default function WodCard({
       <p className="text-gray-600 mb-4 whitespace-pre-line">{description}</p>
 
       <div className="flex items-center">
-        <span className="text-sm text-gray-500">난이도:</span>
-        <span className="ml-2 text-sm font-medium">{level}</span>
+        {/* <span className="text-sm text-gray-500">난이도:</span> */}
+        <span className="ml-2 text-sm font-medium whitespace-pre-line">
+          {level}
+        </span>
       </div>
     </div>
   );
