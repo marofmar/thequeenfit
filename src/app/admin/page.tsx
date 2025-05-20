@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 type WodFormData = {
   date: string;
@@ -13,6 +14,9 @@ type WodFormData = {
 
 export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+  const router = useRouter();
   const [formData, setFormData] = useState<WodFormData>({
     date: "",
     title: "",
@@ -20,6 +24,48 @@ export default function AdminPage() {
     description: "",
     level: "",
   });
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          router.push("/");
+          return;
+        }
+
+        const { data: roleData, error } = await supabase
+          .from("roles")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (error || !roleData) {
+          router.push("/");
+          return;
+        }
+
+        setIsAdmin(true);
+      } catch (error) {
+        console.error("Error checking admin role:", error);
+        router.push("/");
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAdminRole();
+  }, [router]);
+
+  // 권한 체크가 완료되고 관리자가 아닌 경우에만 경고 메시지 표시
+  useEffect(() => {
+    if (!isChecking && !isAdmin) {
+      alert("접근할 수 없는 페이지입니다");
+    }
+  }, [isChecking, isAdmin]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -82,6 +128,21 @@ export default function AdminPage() {
       setIsLoading(false);
     }
   };
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">로딩 중...</h2>
+          <p className="text-gray-600">잠시만 기다려주세요.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null; // 이미 useEffect에서 리다이렉트 처리됨
+  }
 
   return (
     <main className="p-8">
