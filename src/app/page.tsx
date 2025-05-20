@@ -16,6 +16,9 @@ export default function Home() {
         >
           🏋️‍♀️ 랭킹
         </Link>
+        <Link href="/admin" className="text-pink-400 font-bold hover:underline">
+          🔑 관리자 페이지
+        </Link>
       </div>
     </main>
   );
