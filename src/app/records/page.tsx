@@ -10,6 +10,7 @@ type Record = {
   member_name: string;
   score_raw: string;
   level: string;
+  remark: string;
 };
 
 export default function RecordsPage() {
@@ -17,6 +18,7 @@ export default function RecordsPage() {
   const [memberName, setMemberName] = useState("");
   const [scoreRaw, setScoreRaw] = useState("");
   const [level, setLevel] = useState("Rxd");
+  const [remark, setRemark] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -48,6 +50,7 @@ export default function RecordsPage() {
         member_name: memberName,
         score_raw: scoreRaw,
         level: level,
+        remark: remark,
       });
 
       if (error) throw error;
@@ -56,6 +59,7 @@ export default function RecordsPage() {
       setMemberName("");
       setScoreRaw("");
       setLevel("Rxd");
+      setRemark("");
       alert("기록이 저장되었습니다!");
     } catch (error: any) {
       console.error("Error saving record:", error);
@@ -146,6 +150,19 @@ export default function RecordsPage() {
                 <option value="B">B</option>
                 <option value="C">C</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                메모
+              </label>
+              <textarea
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                placeholder="회원 기록에 대한 메모를 입력하세요"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                rows={3}
+              />
             </div>
 
             <button
