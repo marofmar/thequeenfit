@@ -17,7 +17,12 @@ export default function RecordsPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [memberName, setMemberName] = useState("");
   const [scoreRaw, setScoreRaw] = useState("");
-  const [level, setLevel] = useState("Rxd");
+  const [level, setLevel] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("lastLevel") || "Rxd";
+    }
+    return "Rxd";
+  });
   const [remark, setRemark] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -40,6 +45,12 @@ export default function RecordsPage() {
     }
   };
 
+  const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLevel = e.target.value;
+    setLevel(newLevel);
+    localStorage.setItem("lastLevel", newLevel);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -58,7 +69,7 @@ export default function RecordsPage() {
       // 입력 필드 초기화
       setMemberName("");
       setScoreRaw("");
-      setLevel("Rxd");
+      setLevel(localStorage.getItem("lastLevel") || "Rxd");
       setRemark("");
       alert("기록이 저장되었습니다!");
     } catch (error: any) {
@@ -140,7 +151,7 @@ export default function RecordsPage() {
               </label>
               <select
                 value={level}
-                onChange={(e) => setLevel(e.target.value)}
+                onChange={handleLevelChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 required
               >
