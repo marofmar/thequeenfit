@@ -53,6 +53,9 @@ export default function Navbar() {
           <Link href="/wods" className="text-gray-700 hover:text-green-600">
             WOD
           </Link>
+          <Link href="/records" className="text-gray-700 hover:text-green-600">
+            기록
+          </Link>
           <Link href="/rankings" className="text-gray-700 hover:text-green-600">
             랭킹
           </Link>
