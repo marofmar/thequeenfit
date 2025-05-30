@@ -64,21 +64,25 @@ export default function WodsPage() {
 
       const wodMap: WodMap = {};
       allData.forEach((wod: any) => {
+        console.log("Processing WOD for date:", wod.date);
         console.log("Raw WOD data:", wod);
+
         // type이 문자열인 경우 쉼표로 분리하여 배열로 변환
-        const types =
-          typeof wod.type === "string"
-            ? wod.type
+        const types = Array.isArray(wod.type)
+          ? wod.type
+          : typeof wod.type === "string"
+          ? wod.type.startsWith("[")
+            ? JSON.parse(wod.type)
+            : wod.type
                 .split(",")
                 .map(
                   (t: string) =>
                     t.trim() as "cardio" | "gymnastics" | "strength"
                 )
-            : Array.isArray(wod.type)
-            ? wod.type
-            : [wod.type];
+          : [wod.type];
 
         console.log("Processed types:", types);
+        console.log("Date being used as key:", wod.date);
 
         wodMap[wod.date] = {
           title: wod.title,
@@ -89,6 +93,7 @@ export default function WodsPage() {
       });
 
       console.log("Final WOD map:", wodMap);
+      console.log("Available dates in map:", Object.keys(wodMap));
       setWods(wodMap);
     } catch (error: any) {
       console.error("Error fetching WODs:", {

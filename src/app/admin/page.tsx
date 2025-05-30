@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 type WodFormData = {
   date: string;
   title: string;
-  type: string[];
+  type: ("cardio" | "gymnastics" | "strength")[];
   description: string;
   level: string;
 };
@@ -82,7 +82,7 @@ export default function AdminPage() {
     setFormData((prev) => ({
       ...prev,
       type: checked
-        ? [...prev.type, value]
+        ? [...prev.type, value as "cardio" | "gymnastics" | "strength"]
         : prev.type.filter((t) => t !== value),
     }));
   };
@@ -98,6 +98,11 @@ export default function AdminPage() {
       const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
       const day = dateObj.getDate().toString().padStart(2, "0");
       const formattedDate = `${year}${month}${day}`;
+
+      // type 배열이 비어있는지 확인
+      if (formData.type.length === 0) {
+        throw new Error("최소 하나 이상의 타입을 선택해주세요.");
+      }
 
       const { error } = await supabase.from("wods").insert([
         {
