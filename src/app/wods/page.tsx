@@ -31,6 +31,12 @@ export default function WodsPage() {
     return `${year}${month}${day}`;
   };
 
+  // ISO 날짜를 YYMMDD 형식으로 변환하는 함수
+  const formatISODate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return formatDate(date);
+  };
+
   const dateString = formatDate(selectedDate);
   const selectedWod = wods[dateString];
 
@@ -82,9 +88,10 @@ export default function WodsPage() {
           : [wod.type];
 
         console.log("Processed types:", types);
-        console.log("Date being used as key:", wod.date);
+        const formattedDate = formatISODate(wod.date);
+        console.log("Date being used as key:", formattedDate);
 
-        wodMap[wod.date] = {
+        wodMap[formattedDate] = {
           title: wod.title,
           type: types,
           description: wod.description,
