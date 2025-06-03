@@ -24,6 +24,7 @@ type RecordRow = {
   id: string;
   member_name: string;
   score_value: number;
+  score_raw: string;
   level: string;
   wod_id: string;
   wod_date: string;
@@ -71,7 +72,9 @@ export default function WodsPage() {
       setIsRankingLoading(true);
       const { data, error } = await supabase
         .from("records")
-        .select("id, member_name, score_value, level, wod_id, wod_date, remark")
+        .select(
+          "id, member_name, score_value, score_raw, level, wod_id, wod_date, remark"
+        )
         .eq("wod_date", rankingDateString)
         .not("score_value", "is", null);
       if (!error && data) {
@@ -282,7 +285,7 @@ export default function WodsPage() {
                     메모
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff] rounded-tr-2xl">
-                    점수
+                    기록
                   </th>
                 </tr>
               </thead>
@@ -307,7 +310,7 @@ export default function WodsPage() {
                       {r.remark || ""}
                     </td>
                     <td className="px-6 py-3 text-right rounded-r-2xl">
-                      {r.score_value}
+                      {r.score_raw}
                     </td>
                   </tr>
                 ))}
