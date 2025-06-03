@@ -14,6 +14,7 @@ type RecordRow = {
   level: string;
   wod_id: string;
   wod_date: string;
+  remark?: string;
 };
 
 type WodInfo = {
@@ -43,7 +44,7 @@ export default function RankingsPage() {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("records")
-        .select("id, member_name, score_value, level, wod_id, wod_date")
+        .select("id, member_name, score_value, level, wod_id, wod_date, remark")
         .eq("wod_date", dateString)
         .not("score_value", "is", null);
       if (!error && data) {
@@ -72,6 +73,11 @@ export default function RankingsPage() {
     const idx = LEVEL_PRIORITY.indexOf(level);
     return idx === -1 ? 999 : idx;
   };
+
+  // 해당 날짜의 기록에 실제로 존재하는 level만 추출
+  const levelsInRecords = LEVEL_PRIORITY.filter((level) =>
+    records.some((r) => r.level === level)
+  );
 
   // level 필터링
   const filtered =
@@ -121,7 +127,7 @@ export default function RankingsPage() {
             className="px-3 py-2 rounded-md border border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-[#a18fff]"
           >
             <option value="전체">전체</option>
-            {LEVEL_PRIORITY.map((level) => (
+            {levelsInRecords.map((level) => (
               <option key={level} value={level}>
                 {level}
               </option>
@@ -150,6 +156,9 @@ export default function RankingsPage() {
                 <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff]">
                   레벨
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff]">
+                  메모
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff] rounded-tr-2xl">
                   점수
                 </th>
@@ -173,6 +182,9 @@ export default function RankingsPage() {
                   <td className="px-6 py-3">{r.member_name}</td>
                   <td className="px-6 py-3">{getWodTitle(r.wod_id)}</td>
                   <td className="px-6 py-3">{r.level}</td>
+                  <td className="px-6 py-3 text-gray-600 whitespace-pre-line text-sm">
+                    {r.remark || ""}
+                  </td>
                   <td className="px-6 py-3 text-right rounded-r-2xl">
                     {r.score_value}
                   </td>
