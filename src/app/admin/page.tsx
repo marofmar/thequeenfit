@@ -8,6 +8,7 @@ import "react-calendar/dist/Calendar.css";
 import WodCard from "@/components/WodCard";
 
 type WodFormData = {
+  id?: string;
   date: string;
   title: string;
   type: ("cardio" | "gymnastics" | "strength")[];
@@ -86,6 +87,7 @@ export default function AdminPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      id: prev.id,
     }));
   };
 
@@ -96,6 +98,7 @@ export default function AdminPage() {
       type: checked
         ? [...prev.type, value as "cardio" | "gymnastics" | "strength"]
         : prev.type.filter((t) => t !== value),
+      id: prev.id,
     }));
   };
 
@@ -107,92 +110,96 @@ export default function AdminPage() {
     return `${year}-${month}-${day}`;
   };
 
-  // 달력에서 날짜 클릭 시
-  const handleDateChange = (value: any) => {
-    if (value instanceof Date) {
-      setSelectedDate(value);
-      const key = formatDate(value);
-      if (wodMap[key]) {
-        setFormData({ ...wodMap[key] });
-        setEditMode(true);
-      } else {
-        setFormData({
-          date: key,
-          title: "",
-          type: [],
-          description: "",
-          level: "",
-        });
-        setEditMode(false);
-      }
-    }
-  };
-
-  // WOD 전체 불러오기 (달력 타일 표시용)
-  useEffect(() => {
-    if (!isAdmin || !selectedDate) return;
-    const fetchWods = async () => {
-      const { data, error } = await supabase
-        .from("wods")
-        .select("date, title, type, description, level");
-      if (!error && data) {
-        const map: Record<string, WodFormData> = {};
-        data.forEach((w: any) => {
-          // type: string or array
-          let typeArr = Array.isArray(w.type)
-            ? w.type
-            : typeof w.type === "string"
-            ? w.type.startsWith("[")
-              ? JSON.parse(w.type)
-              : w.type.split(",").map((t: string) => t.trim())
-            : [];
+  // WOD 배열을 날짜별 최신 WOD map으로 변환
+  function mapWodsByDate(data: any[]): Record<string, WodFormData> {
+    const map: Record<string, WodFormData> = {};
+    data
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .forEach((w: any) => {
+        let typeArr = Array.isArray(w.type)
+          ? w.type
+          : typeof w.type === "string"
+          ? w.type.startsWith("[")
+            ? JSON.parse(w.type)
+            : w.type.split(",").map((t: string) => t.trim())
+          : [];
+        if (!map[w.date]) {
           map[w.date] = {
+            id: w.id,
             date: w.date,
             title: w.title,
             type: typeArr,
             description: w.description,
             level: w.level,
           };
-        });
-        setWodMap(map);
-        // 현재 선택 날짜에 WOD 있으면 폼 채우기
-        const key = formatDate(selectedDate);
-        if (map[key]) {
-          setFormData({ ...map[key] });
-          setEditMode(true);
-        } else {
-          setFormData({
-            date: key,
-            title: "",
-            type: [],
-            description: "",
-            level: "",
-          });
-          setEditMode(false);
         }
-      }
+      });
+    return map;
+  }
+
+  // 빈 폼 데이터 생성
+  function getEmptyFormData(date: string): WodFormData {
+    return {
+      id: undefined,
+      date,
+      title: "",
+      type: [],
+      description: "",
+      level: "",
     };
-    fetchWods();
+  }
+
+  // 날짜별로 폼 데이터 세팅
+  function setFormDataForDate(
+    date: string,
+    map: Record<string, WodFormData>,
+    setFormData: any,
+    setEditMode: any
+  ) {
+    if (map[date]) {
+      setFormData({ ...map[date] });
+      setEditMode(true);
+    } else {
+      setFormData(getEmptyFormData(date));
+      setEditMode(false);
+    }
+  }
+
+  // 달력에서 날짜 클릭 시
+  const handleDateChange = (value: any) => {
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    }
+  };
+
+  // WOD 전체 불러오기 (달력 타일 표시용)
+  const fetchWods = async (dateKey: string) => {
+    const { data, error } = await supabase
+      .from("wods")
+      .select("id, date, title, type, description, level, created_at");
+    if (!error && data) {
+      const map = mapWodsByDate(data);
+      setWodMap(map);
+      setFormDataForDate(dateKey, map, setFormData, setEditMode);
+    }
+  };
+
+  // WOD 전체 fetch (최초/날짜 변경 시)
+  useEffect(() => {
+    if (!isAdmin || !selectedDate) return;
+    const key = formatDate(selectedDate);
+    fetchWods(key);
     // eslint-disable-next-line
   }, [isAdmin, selectedDate]);
 
-  // 날짜 변경 시 폼 자동 채우기
+  // 날짜 변경 시 폼 자동 채우기 (wodMap이 갱신될 때)
   useEffect(() => {
     if (!selectedDate) return;
     const key = formatDate(selectedDate);
-    if (wodMap[key]) {
-      setFormData({ ...wodMap[key] });
-      setEditMode(true);
-    } else {
-      setFormData({
-        date: key,
-        title: "",
-        type: [],
-        description: "",
-        level: "",
-      });
-      setEditMode(false);
-    }
+    setFormDataForDate(key, wodMap, setFormData, setEditMode);
     // eslint-disable-next-line
   }, [selectedDate, wodMap]);
 
@@ -219,8 +226,8 @@ export default function AdminPage() {
       if (formData.type.length === 0) {
         throw new Error("최소 하나 이상의 타입을 선택해주세요.");
       }
-      if (editMode) {
-        // update
+      if (editMode && formData.id) {
+        // update by id
         const { error } = await supabase
           .from("wods")
           .update({
@@ -229,7 +236,7 @@ export default function AdminPage() {
             description: formData.description,
             level: formData.level,
           })
-          .eq("date", formData.date);
+          .eq("id", formData.id);
         if (error) throw error;
         alert("WOD가 성공적으로 수정되었습니다!");
       } else {
@@ -247,29 +254,7 @@ export default function AdminPage() {
         alert("WOD가 성공적으로 저장되었습니다!");
       }
       // 저장 후 WOD 목록 갱신
-      const { data, error: fetchError } = await supabase
-        .from("wods")
-        .select("date, title, type, description, level");
-      if (!fetchError && data) {
-        const map: Record<string, WodFormData> = {};
-        data.forEach((w: any) => {
-          let typeArr = Array.isArray(w.type)
-            ? w.type
-            : typeof w.type === "string"
-            ? w.type.startsWith("[")
-              ? JSON.parse(w.type)
-              : w.type.split(",").map((t: string) => t.trim())
-            : [];
-          map[w.date] = {
-            date: w.date,
-            title: w.title,
-            type: typeArr,
-            description: w.description,
-            level: w.level,
-          };
-        });
-        setWodMap(map);
-      }
+      fetchWods(formData.date);
     } catch (error: any) {
       console.error("Error saving WOD:", error);
       alert("WOD 저장/수정 중 오류가 발생했습니다: " + error.message);
