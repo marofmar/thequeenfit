@@ -267,8 +267,6 @@ export default function WodsPage() {
                 type={selectedWod.type}
                 description={selectedWod.description}
                 level={selectedWod.level}
-                isAdmin={isAdmin}
-                onEditClick={handleEditClick}
               />
               {/* WOD 수정 모달 */}
               {showEditModal && editWod && (
