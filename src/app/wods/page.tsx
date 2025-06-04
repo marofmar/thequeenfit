@@ -5,6 +5,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import WodCard from "@/components/WodCard";
 import { supabase } from "@/lib/supabase";
+import RankingTable from "@/components/RankingTable";
 
 type WodData = {
   title: string;
@@ -17,11 +18,30 @@ type WodMap = {
   [key: string]: WodData;
 };
 
+// 랭킹 관련 상수 및 타입
+const LEVEL_PRIORITY = ["Rxd", "Scaled", "A", "B", "C"];
+
+type RecordRow = {
+  id: string;
+  member_name: string;
+  score_value: number;
+  score_raw: string;
+  level: string;
+  wod_id: string;
+  wod_date: string;
+  remark?: string;
+  wod_title: string;
+  rank: number;
+};
+
 export default function WodsPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [wods, setWods] = useState<WodMap>({});
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [records, setRecords] = useState<RecordRow[]>([]);
+  const [isRankingLoading, setIsRankingLoading] = useState(true);
+  const [selectedLevel, setSelectedLevel] = useState<string>("전체");
 
   // 날짜를 YYMMDD 형식으로 변환하는 함수
   const formatDate = (date: Date) => {
@@ -31,8 +51,42 @@ export default function WodsPage() {
     return `${year}${month}${day}`;
   };
 
+  // ISO 날짜를 YYMMDD 형식으로 변환하는 함수
+  const formatISODate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    return formatDate(date);
+  };
+
   const dateString = formatDate(selectedDate);
   const selectedWod = wods[dateString];
+
+  // 랭킹용: YYYY-MM-DD 포맷 필요
+  const rankingDateString = (() => {
+    // selectedDate는 Date 객체
+    const year = selectedDate.getFullYear();
+    const month = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
+    const day = selectedDate.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  })();
+
+  // 랭킹 데이터 fetch
+  useEffect(() => {
+    const fetchRecords = async () => {
+      setIsRankingLoading(true);
+      const { data, error } = await supabase
+        .from("ranking_view")
+        .select(
+          "id, member_name, score_value, score_raw, level, wod_id, wod_date, remark, wod_title, rank"
+        )
+        .eq("wod_date", rankingDateString)
+        .not("score_value", "is", null);
+      if (!error && data) {
+        setRecords(data.map((r: any) => ({ ...r, rank: r.rank ?? 0 })));
+      }
+      setIsRankingLoading(false);
+    };
+    fetchRecords();
+  }, [rankingDateString]);
 
   useEffect(() => {
     setMounted(true);
@@ -82,9 +136,10 @@ export default function WodsPage() {
           : [wod.type];
 
         console.log("Processed types:", types);
-        console.log("Date being used as key:", wod.date);
+        const formattedDate = formatISODate(wod.date);
+        console.log("Date being used as key:", formattedDate);
 
-        wodMap[wod.date] = {
+        wodMap[formattedDate] = {
           title: wod.title,
           type: types,
           description: wod.description,
@@ -112,6 +167,9 @@ export default function WodsPage() {
       setSelectedDate(value);
     }
   };
+
+  // WOD id -> title 매핑 함수
+  const getWodTitle = (wod_id: string) => wods[wod_id]?.title || wod_id;
 
   if (!mounted) {
     return null;
@@ -155,6 +213,51 @@ export default function WodsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 랭킹 테이블 */}
+      <div className="mt-12">
+        <h2 className="text-xl font-bold mb-4 text-[#3b2ff5]">🏆 랭킹</h2>
+        <div className="max-w-4xl mx-auto mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div />
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="level-select"
+              className="font-medium text-[#3b2ff5]"
+            >
+              레벨 필터:
+            </label>
+            <select
+              id="level-select"
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+              className="px-3 py-2 rounded-md border border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-[#a18fff]"
+            >
+              <option value="전체">전체</option>
+              {/* level 목록은 records에서 추출해서 표시 */}
+              {[...new Set(records.map((r) => r.level))]
+                .filter((level) => level)
+                .map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
+        {isRankingLoading ? (
+          <p className="text-gray-500 text-center">로딩 중...</p>
+        ) : records.length === 0 ? (
+          <p className="text-gray-400 text-center">
+            이 날짜의 기록이 없습니다.
+          </p>
+        ) : (
+          <RankingTable
+            records={records}
+            selectedLevel={selectedLevel}
+            levelPriority={LEVEL_PRIORITY}
+          />
+        )}
       </div>
     </main>
   );
