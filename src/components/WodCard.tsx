@@ -26,7 +26,7 @@ export default function WodCard({
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-4">
+    <div className="bg-white shadow-md rounded-lg p-4 relative">
       <div className="flex items-center mb-2">
         <div className="flex items-center gap-2">
           {type.map((t) => (
@@ -48,7 +48,6 @@ export default function WodCard({
         <p className="text-gray-600 mb-2 whitespace-pre-line">{description}</p>
 
         <div className="flex items-start">
-          {/* <span className="text-sm text-gray-500">난이도:</span> */}
           <span className="text-sm font-medium whitespace-pre-line">
             {level}
           </span>
