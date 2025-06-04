@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { supabase } from "@/lib/supabase";
+import RankingTable from "@/components/RankingTable";
 
 const LEVEL_PRIORITY = ["Rxd", "Scaled", "A", "B", "C"];
 
@@ -11,20 +12,17 @@ type RecordRow = {
   id: string;
   member_name: string;
   score_value: number;
+  score_raw: string;
   level: string;
   wod_id: string;
   wod_date: string;
+  wod_title?: string;
   remark?: string;
-};
-
-type WodInfo = {
-  id: string;
-  title: string;
+  rank: number;
 };
 
 export default function RankingsPage() {
   const [records, setRecords] = useState<RecordRow[]>([]);
-  const [wods, setWods] = useState<WodInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedLevel, setSelectedLevel] = useState<string>("전체");
@@ -43,30 +41,19 @@ export default function RankingsPage() {
     const fetchRecords = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from("records")
-        .select("id, member_name, score_value, level, wod_id, wod_date, remark")
+        .from("ranking_view")
+        .select(
+          "id, member_name, score_value, score_raw, level, wod_id, wod_date, remark, wod_title, rank"
+        )
         .eq("wod_date", dateString)
         .not("score_value", "is", null);
       if (!error && data) {
-        setRecords(data);
+        setRecords(data.map((r: any) => ({ ...r, rank: r.rank ?? 0 })));
       }
       setIsLoading(false);
     };
     fetchRecords();
   }, [dateString]);
-
-  useEffect(() => {
-    const fetchWods = async () => {
-      const { data, error } = await supabase.from("wods").select("id, title");
-      if (!error && data) {
-        setWods(data);
-      }
-    };
-    fetchWods();
-  }, []);
-
-  const getWodTitle = (wod_id: string) =>
-    wods.find((w) => w.id === wod_id)?.title || wod_id;
 
   // level 우선순위 정렬 함수
   const levelOrder = (level: string) => {
@@ -85,14 +72,11 @@ export default function RankingsPage() {
       ? records
       : records.filter((r) => r.level === selectedLevel);
 
-  // level > score_value > wod_title > member_name 순 정렬
+  // level > rank > member_name 순 정렬 (타이 방식)
   const sorted = [...filtered].sort((a, b) => {
     const levelDiff = levelOrder(a.level) - levelOrder(b.level);
     if (levelDiff !== 0) return levelDiff;
-    if (b.score_value !== a.score_value) return b.score_value - a.score_value;
-    const titleA = getWodTitle(a.wod_id);
-    const titleB = getWodTitle(b.wod_id);
-    if (titleA !== titleB) return titleA.localeCompare(titleB);
+    if (a.rank !== b.rank) return a.rank - b.rank;
     return a.member_name.localeCompare(b.member_name);
   });
 
@@ -140,59 +124,11 @@ export default function RankingsPage() {
       ) : sorted.length === 0 ? (
         <p className="text-gray-400 text-center">이 날짜의 기록이 없습니다.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white/80 shadow-lg rounded-2xl border-separate border-spacing-0">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff] rounded-tl-2xl">
-                  순위
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff]">
-                  이름
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff]">
-                  WOD
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff]">
-                  레벨
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff]">
-                  메모
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-bold text-[#3b2ff5] bg-[#f3f0ff] rounded-tr-2xl">
-                  점수
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((r, idx) => (
-                <tr
-                  key={r.id}
-                  className={
-                    idx === 0
-                      ? "bg-gradient-to-r from-[#a18fff]/60 to-[#3b2ff5]/60 text-white font-bold"
-                      : idx % 2 === 0
-                      ? "bg-[#f8f7fd] hover:bg-[#ecebfa]"
-                      : "bg-white hover:bg-[#f3f0ff]"
-                  }
-                >
-                  <td className="px-6 py-3 text-center rounded-l-2xl">
-                    {idx + 1}
-                  </td>
-                  <td className="px-6 py-3">{r.member_name}</td>
-                  <td className="px-6 py-3">{getWodTitle(r.wod_id)}</td>
-                  <td className="px-6 py-3">{r.level}</td>
-                  <td className="px-6 py-3 text-gray-600 whitespace-pre-line text-sm">
-                    {r.remark || ""}
-                  </td>
-                  <td className="px-6 py-3 text-right rounded-r-2xl">
-                    {r.score_value}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RankingTable
+          records={records}
+          selectedLevel={selectedLevel}
+          levelPriority={LEVEL_PRIORITY}
+        />
       )}
     </main>
   );
