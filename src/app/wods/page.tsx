@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import RankingTable from "@/components/RankingTable";
 
 type WodData = {
+  date: string;
   title: string;
   type: ("cardio" | "gymnastics" | "strength")[];
   description: string;
@@ -42,6 +43,9 @@ export default function WodsPage() {
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [isRankingLoading, setIsRankingLoading] = useState(true);
   const [selectedLevel, setSelectedLevel] = useState<string>("전체");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editWod, setEditWod] = useState<WodData | null>(null);
 
   // 날짜를 YYMMDD 형식으로 변환하는 함수
   const formatDate = (date: Date) => {
@@ -87,6 +91,30 @@ export default function WodsPage() {
     };
     fetchRecords();
   }, [rankingDateString]);
+
+  // 관리자 권한 확인
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          setIsAdmin(false);
+          return;
+        }
+        const { data: roleData, error } = await supabase
+          .from("roles")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+        setIsAdmin(!!roleData && !error);
+      } catch (e) {
+        setIsAdmin(false);
+      }
+    };
+    checkAdminRole();
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -140,6 +168,7 @@ export default function WodsPage() {
         console.log("Date being used as key:", formattedDate);
 
         wodMap[formattedDate] = {
+          date: formattedDate,
           title: wod.title,
           type: types,
           description: wod.description,
@@ -171,6 +200,37 @@ export default function WodsPage() {
   // WOD id -> title 매핑 함수
   const getWodTitle = (wod_id: string) => wods[wod_id]?.title || wod_id;
 
+  // WOD 수정 모달 열기
+  const handleEditClick = () => {
+    if (selectedWod) {
+      // date가 비어 있으면 현재 선택된 날짜(rankingDateString)로 세팅
+      setEditWod({
+        ...selectedWod,
+        date: selectedWod.date || rankingDateString,
+      });
+      setShowEditModal(true);
+    }
+  };
+
+  // WOD 수정 폼 제출 (예시: 콘솔 출력, 실제 저장 로직은 추가 구현 필요)
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // 실제 저장 로직 구현 필요
+    alert("WOD 수정 기능은 아직 구현되지 않았습니다.");
+    setShowEditModal(false);
+  };
+
+  // type 체크박스 핸들러
+  const handleEditTypeChange = (value: string, checked: boolean) => {
+    if (!editWod) return;
+    setEditWod({
+      ...editWod,
+      type: checked
+        ? [...editWod.type, value as "cardio" | "gymnastics" | "strength"]
+        : editWod.type.filter((t) => t !== value),
+    });
+  };
+
   if (!mounted) {
     return null;
   }
@@ -200,13 +260,168 @@ export default function WodsPage() {
               <p className="text-gray-500">로딩 중...</p>
             </div>
           ) : selectedWod ? (
-            <WodCard
-              date={dateString}
-              title={selectedWod.title}
-              type={selectedWod.type}
-              description={selectedWod.description}
-              level={selectedWod.level}
-            />
+            <>
+              <WodCard
+                date={dateString}
+                title={selectedWod.title}
+                type={selectedWod.type}
+                description={selectedWod.description}
+                level={selectedWod.level}
+                isAdmin={isAdmin}
+                onEditClick={handleEditClick}
+              />
+              {/* WOD 수정 모달 */}
+              {showEditModal && editWod && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                    <button
+                      className="absolute top-2 right-2 text-gray-400 hover:text-gray-700"
+                      onClick={() => setShowEditModal(false)}
+                      aria-label="닫기"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-6 h-6"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                    <h2 className="text-xl font-bold mb-4">WOD 수정</h2>
+                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          날짜
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full border rounded px-3 py-2 text-base"
+                          value={(() => {
+                            // editWod.date: YYMMDD 또는 YYYY-MM-DD 등 다양한 포맷 대응
+                            if (!editWod.date) return "";
+                            if (
+                              editWod.date.length === 8 &&
+                              !editWod.date.includes("-")
+                            ) {
+                              // YYMMDD → YYYY-MM-DD
+                              const y = "20" + editWod.date.slice(0, 2);
+                              const m = editWod.date.slice(2, 4);
+                              const d = editWod.date.slice(4, 6);
+                              return `${y}-${m}-${d}`;
+                            }
+                            if (
+                              editWod.date.length === 10 &&
+                              editWod.date.includes("-")
+                            ) {
+                              return editWod.date;
+                            }
+                            return editWod.date;
+                          })()}
+                          onChange={(e) =>
+                            setEditWod({ ...editWod, date: e.target.value })
+                          }
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          제목
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-3 py-2 text-xl font-bold mb-1"
+                          value={editWod.title}
+                          onChange={(e) =>
+                            setEditWod({ ...editWod, title: e.target.value })
+                          }
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          타입
+                        </label>
+                        <div className="flex gap-2">
+                          {(["cardio", "gymnastics", "strength"] as const).map(
+                            (t) => (
+                              <label
+                                key={t}
+                                className="inline-flex items-center gap-1"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="form-checkbox accent-[#3b2ff5]"
+                                  value={t}
+                                  checked={editWod.type.includes(t)}
+                                  onChange={(e) =>
+                                    handleEditTypeChange(t, e.target.checked)
+                                  }
+                                />
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs text-white ${
+                                    t === "cardio"
+                                      ? "bg-blue-500"
+                                      : t === "gymnastics"
+                                      ? "bg-green-500"
+                                      : "bg-red-500"
+                                  }`}
+                                >
+                                  {t}
+                                </span>
+                              </label>
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          설명
+                        </label>
+                        <textarea
+                          className="w-full border rounded px-3 py-2 text-base mb-1 min-h-[80px]"
+                          value={editWod.description}
+                          onChange={(e) =>
+                            setEditWod({
+                              ...editWod,
+                              description: e.target.value,
+                            })
+                          }
+                          rows={4}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          난이도
+                        </label>
+                        <textarea
+                          className="w-full border rounded px-3 py-2 text-base mb-1 min-h-[40px] whitespace-pre-line"
+                          value={editWod.level}
+                          onChange={(e) =>
+                            setEditWod({ ...editWod, level: e.target.value })
+                          }
+                          rows={2}
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 text-lg font-semibold"
+                      >
+                        저장
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="bg-white shadow-md rounded-lg p-6">
               <p className="text-gray-500">선택한 날짜의 WOD가 없습니다.</p>
