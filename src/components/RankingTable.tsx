@@ -21,9 +21,16 @@ type RankingTableProps = {
   levelPriority?: string[];
 };
 
+// remark에서 lb 앞의 숫자 추출 (없으면 0)
+function getLbValue(remark?: string): number {
+  if (!remark) return 0;
+  const match = remark.match(/(\d+)\s*lb/i);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 // 타이 방식 순위 계산 함수 (공동 순위, 건너뛰기)
 function getOverallRanks(records: RecordRow[], levelPriority: string[]) {
-  // level 우선순위, score_value, member_name 순 정렬
+  // level 우선순위, score_value, lb값, member_name 순 정렬
   const sorted = [...records].sort((a, b) => {
     const levelDiff =
       (levelPriority.indexOf(a.level) === -1
@@ -37,25 +44,32 @@ function getOverallRanks(records: RecordRow[], levelPriority: string[]) {
       // DB에서 온 rank가 있으면 우선 사용 (레벨별)
       return a.rank - b.rank;
     }
-    // score_value 내림차순 (높을수록 좋음, MIN_Time은 이미 DB에서 정렬됨)
     if (b.score_value !== a.score_value) return b.score_value - a.score_value;
+    // score_value가 같으면 lb값 내림차순
+    const lbA = getLbValue(a.remark);
+    const lbB = getLbValue(b.remark);
+    if (lbB !== lbA) return lbB - lbA;
+    // lb값도 같으면 이름순
     return a.member_name.localeCompare(b.member_name);
   });
 
   // 전체 순위 부여 (타이 방식)
   let prevScore: number | null = null;
+  let prevLb: number | null = null;
   let prevLevel: string | null = null;
   let prevRank = 0;
   let skip = 1;
   const ranked = sorted.map((r, idx) => {
-    if (prevScore === r.score_value && prevLevel === r.level) {
-      // 동점, 같은 레벨이면 같은 순위
+    const lb = getLbValue(r.remark);
+    if (prevScore === r.score_value && prevLevel === r.level && prevLb === lb) {
+      // 동점, 같은 레벨, 같은 lb면 같은 순위
       skip++;
       return { ...r, overallRank: prevRank };
     } else {
       const rank = idx + 1;
       prevScore = r.score_value;
       prevLevel = r.level;
+      prevLb = lb;
       prevRank = rank;
       skip = 1;
       return { ...r, overallRank: rank };
