@@ -56,9 +56,9 @@ export default function Navbar() {
           <Link href="/records" className="text-gray-700 hover:text-green-600">
             회원기록입력
           </Link>
-          {/* <Link href="/rankings" className="text-gray-700 hover:text-green-600">
-            랭킹
-          </Link> */}
+          <Link href="/my" className="text-gray-700 hover:text-green-600">
+            마이페이지
+          </Link>
           {isLoggedIn ? (
             <button
               onClick={handleLogout}
