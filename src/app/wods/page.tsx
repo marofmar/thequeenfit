@@ -36,7 +36,7 @@ type RecordRow = {
 };
 
 export default function WodsPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [wods, setWods] = useState<WodMap>({});
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -61,12 +61,15 @@ export default function WodsPage() {
     return formatDate(date);
   };
 
+  if (!mounted || !selectedDate) {
+    return null;
+  }
+
   const dateString = formatDate(selectedDate);
   const selectedWod = wods[dateString];
 
   // 랭킹용: YYYY-MM-DD 포맷 필요
   const rankingDateString = (() => {
-    // selectedDate는 Date 객체
     const year = selectedDate.getFullYear();
     const month = (selectedDate.getMonth() + 1).toString().padStart(2, "0");
     const day = selectedDate.getDate().toString().padStart(2, "0");
@@ -117,9 +120,16 @@ export default function WodsPage() {
   }, []);
 
   useEffect(() => {
+    setSelectedDate(new Date());
     setMounted(true);
-    fetchWods();
   }, []);
+
+  useEffect(() => {
+    if (selectedDate) {
+      fetchWods();
+    }
+    // eslint-disable-next-line
+  }, [selectedDate]);
 
   const fetchWods = async () => {
     try {
@@ -230,10 +240,6 @@ export default function WodsPage() {
         : editWod.type.filter((t) => t !== value),
     });
   };
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <main className="p-8">
