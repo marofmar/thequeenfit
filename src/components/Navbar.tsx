@@ -50,15 +50,15 @@ export default function Navbar() {
           👑 CFQ WOD 👑
         </Link>
         <div className="space-x-12">
-          <Link href="/wods" className="text-gray-700 hover:text-green-600">
-            WOD
+          <Link href="/admin" className="text-gray-700 hover:text-green-600">
+            WOD입력
           </Link>
           <Link href="/records" className="text-gray-700 hover:text-green-600">
-            기록
+            회원기록입력
           </Link>
-          <Link href="/rankings" className="text-gray-700 hover:text-green-600">
+          {/* <Link href="/rankings" className="text-gray-700 hover:text-green-600">
             랭킹
-          </Link>
+          </Link> */}
           {isLoggedIn ? (
             <button
               onClick={handleLogout}
