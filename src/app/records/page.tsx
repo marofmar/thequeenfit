@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 type Record = {
   wod_date: string;
@@ -26,6 +27,52 @@ export default function RecordsPage() {
   const [remark, setRemark] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+  const router = useRouter();
+
+  // 관리자 권한 체크
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          router.push("/");
+          return;
+        }
+
+        const { data: roleData, error } = await supabase
+          .from("roles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (error || roleData?.role !== "admin") {
+          router.push("/");
+          return;
+        }
+
+        setIsAdmin(true);
+      } catch (error) {
+        console.error("Error checking admin role:", error);
+        router.push("/");
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAdminRole();
+  }, [router]);
+
+  // 권한 체크가 완료되고 관리자가 아닌 경우에만 경고 메시지 표시
+  useEffect(() => {
+    if (!isChecking && !isAdmin) {
+      alert("접근할 수 없는 페이지입니다");
+    }
+  }, [isChecking, isAdmin]);
 
   // 날짜를 YYMMDD 형식으로 변환하는 함수
   const formatDate = (date: Date) => {
@@ -82,6 +129,17 @@ export default function RecordsPage() {
 
   if (!mounted) {
     return null;
+  }
+
+  // 권한 체크 중이거나 관리자가 아닌 경우 로딩 표시
+  if (isChecking || !isAdmin) {
+    return (
+      <main className="p-8">
+        <div className="text-center">
+          <p className="text-gray-500">권한을 확인하는 중...</p>
+        </div>
+      </main>
+    );
   }
 
   return (

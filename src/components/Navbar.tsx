@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -16,6 +18,21 @@ export default function Navbar() {
         data: { session },
       } = await supabase.auth.getSession();
       setIsLoggedIn(!!session);
+
+      // admin 권한 확인
+      if (session) {
+        console.log("Current user ID:", session.user.id);
+        const { data: roleData, error } = await supabase
+          .from("roles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        console.log("Role data:", roleData, "Error:", error);
+        const isAdminUser = !error && roleData?.role === "admin";
+        console.log("Is admin:", isAdminUser);
+        setIsAdmin(isAdminUser);
+      }
     };
 
     checkUser();
@@ -23,8 +40,25 @@ export default function Navbar() {
     // 인증 상태 변경 구독
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session);
+
+      // 로그인/로그아웃 시 admin 권한 재확인
+      if (session) {
+        console.log("Auth state changed - User ID:", session.user.id);
+        const { data: roleData, error } = await supabase
+          .from("roles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        console.log("Role data:", roleData, "Error:", error);
+        const isAdminUser = !error && roleData?.role === "admin";
+        console.log("Is admin:", isAdminUser);
+        setIsAdmin(isAdminUser);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => {
@@ -33,13 +67,28 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return; // 중복 클릭 방지
+
+    console.log("Logout button clicked");
+    setIsLoggingOut(true);
+
     try {
+      console.log("Attempting to sign out from Supabase...");
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+
+      if (error) {
+        console.error("Supabase sign out error:", error);
+        throw error;
+      }
+
+      console.log("Successfully signed out from Supabase");
+      console.log("Redirecting to home page...");
       router.push("/");
     } catch (error: any) {
       console.error("Error logging out:", error);
       alert("로그아웃 중 오류가 발생했습니다: " + error.message);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -50,21 +99,34 @@ export default function Navbar() {
           👑 CFQ WOD 👑
         </Link>
         <div className="space-x-12">
-          <Link href="/wods" className="text-gray-700 hover:text-green-600">
-            WOD
-          </Link>
-          <Link href="/records" className="text-gray-700 hover:text-green-600">
-            기록
-          </Link>
-          <Link href="/rankings" className="text-gray-700 hover:text-green-600">
-            랭킹
+          {isAdmin && (
+            <>
+              <Link
+                href="/admin"
+                className="text-gray-700 hover:text-green-600"
+              >
+                WOD입력
+              </Link>
+              <Link
+                href="/records"
+                className="text-gray-700 hover:text-green-600"
+              >
+                회원기록입력
+              </Link>
+            </>
+          )}
+          <Link href="/my" className="text-gray-700 hover:text-green-600">
+            마이페이지
           </Link>
           {isLoggedIn ? (
             <button
               onClick={handleLogout}
-              className="text-gray-700 hover:text-green-600"
+              disabled={isLoggingOut}
+              className={`text-gray-700 hover:text-green-600 ${
+                isLoggingOut ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              로그아웃
+              {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
             </button>
           ) : (
             <Link href="/login" className="text-gray-700 hover:text-green-600">
