@@ -74,7 +74,17 @@ export default function Navbar() {
 
     try {
       console.log("Attempting to sign out from Supabase...");
-      const { error } = await supabase.auth.signOut();
+
+      // 타임아웃 설정 (5초)
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Logout timeout")), 5000)
+      );
+
+      const { error } = (await Promise.race([
+        signOutPromise,
+        timeoutPromise,
+      ])) as any;
 
       if (error) {
         console.error("Supabase sign out error:", error);
@@ -82,11 +92,25 @@ export default function Navbar() {
       }
 
       console.log("Successfully signed out from Supabase");
+
+      // 강제로 로컬 상태 초기화
+      setIsLoggedIn(false);
+      setIsAdmin(false);
+
       console.log("Redirecting to home page...");
-      router.push("/");
+      window.location.href = "/"; // router.push 대신 강제 리로드
     } catch (error: any) {
       console.error("Error logging out:", error);
-      alert("로그아웃 중 오류가 발생했습니다: " + error.message);
+
+      // 에러가 발생해도 강제로 로그아웃 처리
+      if (error.message === "Logout timeout") {
+        console.log("Timeout occurred, forcing logout...");
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+        window.location.href = "/";
+      } else {
+        alert("로그아웃 중 오류가 발생했습니다: " + error.message);
+      }
     } finally {
       setIsLoggingOut(false);
     }
